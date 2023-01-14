@@ -10,19 +10,21 @@ module decode (
     //from regfile
     input wire [`XLEN-1:0] reg_data1_i,
     input wire [`XLEN-1:0] reg_data2_i,
-    //to regfile
+    //to regfile and forwarding
     output reg [4:0] reg_addr1_o,
     output reg [4:0] reg_addr2_o,
     //to exe
     output reg [`XLEN-1:0] pc_o,
-    output reg [`XLEN-1:0] op1_o,
-    output reg [`XLEN-1:0] op2_o,
     output reg [`XLEN-1:0] imm_o,
     output reg [4:0] rd_addr_o,
     output reg rd_we_o,
     output reg [2:0] opfunc3_o,
-    output reg optype_o
+    output reg optype_o,
+    //to forwarding
+    output reg [`XLEN-1:0] op1_o,
+    output reg [`XLEN-1:0] op2_o
 );
+
 wire [`XLEN-1:0] rv32inst = inst_i;
 wire [6:0] opcode = rv32inst[6:0];
 wire [2:0] opfunc3 = rv32inst[14: 12];

@@ -5,14 +5,15 @@ module exe (
     input wire clk_i,
     //from decode
     input wire [`XLEN-1:0] pc_i,
-    input wire [`XLEN-1:0] op1_i,
-    input wire [`XLEN-1:0] op2_i,
     input wire [`XLEN-1:0] imm_i,
     input wire [4:0]rd_addr_i,
     input wire rd_we_i,
     input wire [2:0] opfunc3_i,
     input wire optype_i,
-    //to memory
+    //from forwarding
+    input wire [`XLEN-1:0] op1_i,
+    input wire [`XLEN-1:0] op2_i,
+    //to memory & sforwarding
     output reg [4:0] rd_addr_o,
     output reg [`XLEN-1:0] rd_data_o,
     output reg rd_we_o
