@@ -12,6 +12,8 @@ module exe (
     input wire [2:0] optype_i,
     input wire shiftsel_i,
     input wire addsubsel_i,
+    input wire mem_re_i,
+    input wire mem_we_i,
     //from forwarding
     input wire [`XLEN-1:0] rs1_i,
     input wire [`XLEN-1:0] rs2_i,
@@ -30,9 +32,7 @@ assign op2 = (optype_i == 1 || optype_i == 4)? imm_i:rs2_i;
 reg [`XLEN-1:0] op_result;
 wire [`XLEN-1:0] mem_addr;
 assign mem_addr = rs1_i + imm_i;
-wire mem_re,mem_we;
-assign mem_re = (optype_i == 2);
-assign mem_we = (optype_i == 3);
+
 
 always @(*) begin
     if (optype_i == 0 || optype_i == 1 || optype_i == 4) begin //Rtype,Itype,LUItype
@@ -69,8 +69,8 @@ always@(posedge clk_i) begin
         rd_data_o <= op_result;
         rd_we_o <= rd_we_i;
         mem_addr_o <= mem_addr;
-        mem_re_o <= mem_re ;
-        mem_we_o <= mem_we ;
+        mem_re_o <= mem_re_i;
+        mem_we_o <= mem_we_i ;
         opfunc3_o <= opfunc3_i;
     end
 end    

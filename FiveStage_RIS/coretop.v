@@ -5,6 +5,9 @@ module coretop (
     input wire clk_i
 
 );
+//pipeline ctrl
+wire pipectrl_loaduse_stall;
+wire pipectrl_flushid; 
 //pc_rom
 wire[`XLEN-1:0] pc_wire;
 //rom_if
@@ -30,11 +33,15 @@ wire [2:0]idexe_optype;
 wire [2:0]idexe_opfunc3;
 wire idexe_shiftsel;
 wire idexe_addsubsel;
+wire idexe_memwe;
+wire idexe_memre;
 //id_forward
 wire[`XLEN-1:0] idfwd_rs1;
 wire[`XLEN-1:0] idfwd_rs2;
 wire [4:0] idfwd_addr1;
 wire [4:0] idfwd_addr2;
+//id_pipectrl
+wire idpipectrl_loadusehazard;
 //forward_exe
 wire[`XLEN-1:0] fwdexe_rs1;
 wire[`XLEN-1:0] fwdexe_rs2;
@@ -59,10 +66,21 @@ wire[4:0] wbreg_rdaddr;
 wire[`XLEN-1:0]wbreg_rddata;
 wire wbreg_we;
 
+pipectrl pipectrl0 (
+    //from id
+    .loaduse_hazard_i(idpipectrl_loadusehazard),
+    // to pc&if
+    .loaduse_hazard_o(pipectrl_loaduse_stall),
+    //to id
+    .flushid_o(pipectrl_flushid)
+
+);
+
 program_counter program_counter0(
     .clk_i(clk_i),
     .rst_i(rst_i),
-    .pc_o(pc_wire)
+    .pc_o(pc_wire),
+    .stall_i(pipectrl_loaduse_stall)
 );
 
 rom rom0(
@@ -81,12 +99,15 @@ rom rom0(
 inst_fetch inst_fetch0(
     .clk_i(clk_i),
     .rst_i(rst_i),
+    //from pipectrl
+    .stall_i(pipectrl_loaduse_stall),
     //from rom 
     .inst_i(romif_inst),
     .pc_i(romif_pc), 
     //to id
     .inst_o(ifid_inst),
     .pc_o(ifid_pc)
+
 );
 
 regfiles regfiles0(
@@ -107,6 +128,8 @@ regfiles regfiles0(
 decode decode0(
     .clk_i(clk_i),
     .rst_i(rst_i),
+    //from pipe ctrl
+    .flush_i(pipectrl_flushid),
     //from id
     .inst_i(ifid_inst),
     .pc_i(ifid_pc),
@@ -125,11 +148,15 @@ decode decode0(
     .opfunc3_o(idexe_opfunc3),
     .shiftsel_o(idexe_shiftsel),
     .addsubsel_o(idexe_addsubsel),
+    .mem_re_o(idexe_memre),
+    .mem_we_o(idexe_memwe),
     //to forwarding
     .rs1_o(idfwd_rs1),
     .rs2_o(idfwd_rs2),
     .fwd_raddr1_o(idfwd_addr1),
-    .fwd_raddr2_o(idfwd_addr2)
+    .fwd_raddr2_o(idfwd_addr2),
+    //to pipectrl
+    .loaduse_hazard_o(idpipectrl_loadusehazard)
 );
 exe exe0(
     .clk_i(clk_i),
@@ -143,6 +170,8 @@ exe exe0(
     .opfunc3_i(idexe_opfunc3),
     .shiftsel_i(idexe_shiftsel),
     .addsubsel_i(idexe_addsubsel),
+    .mem_re_i(idexe_memre),
+    .mem_we_i(idexe_memwe),
     //to mem
     .rd_addr_o(exemem_rdaddr),
     .rd_data_o(exemem_rddata),
