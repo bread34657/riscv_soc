@@ -33,15 +33,15 @@ module exe (
 wire [`XLEN-1:0] op1,op2;
 assign op1 = (optype_i == 4)? 0:rs1_i;
 assign op2 = (optype_i == 1 || optype_i == 4)? imm_i:rs2_i;
-reg [`XLEN-1:0] op_result , jump_addr;
+reg [`XLEN-1:0] op_result;
 wire [`XLEN-1:0] mem_addr;
 assign mem_addr = rs1_i + imm_i;
-reg je;
+
 
 always @(*) begin
     op_result = 0;
-    je = 0;
-    jump_addr = 0;
+    je_o = 0;
+    jump_addr_o = 0;
     if (optype_i == 0 || optype_i == 1 || optype_i == 4) begin //Rtype,Itype,LUItype
         case(opfunc3_i)
             3'b000: op_result = (addsubsel_i)? op1 + (~op2 +1'b1) : op1 + op2 ; //sub:add
@@ -54,15 +54,15 @@ always @(*) begin
             3'b101: op_result = (shiftsel_i)? ($signed(op1) >>> op2[4:0]) : ($signed(op1) >> op2[4:0]); //sra:srl
         endcase
     end else if (optype_i == 2)begin //Btype
-        jump_addr = pc_i + imm_i;
+        jump_addr_o = pc_i + imm_i;
         case(opfunc3_i)
-            3'b000: je = (op1 == op2)? 1:0 ; //beq
-            3'b001: je = (op1 != op2)? 1:0 ; //bne
-            3'b100: je = ($signed(op1) < $signed(op2))? 1:0 ; //blt
-            3'b101: je = ($signed(op1) >= $signed(op2))? 1:0 ; //bge
-            3'b110: je = (op1 < op2)? 1:0 ; //bltu
-            3'b111: je = (op1 >= op2)? 1:0 ; //bgeu
-            default : je = 0;
+            3'b000: je_o = (op1 == op2)? 1:0 ; //beq
+            3'b001: je_o = (op1 != op2)? 1:0 ; //bne
+            3'b100: je_o = ($signed(op1) < $signed(op2))? 1:0 ; //blt
+            3'b101: je_o = ($signed(op1) >= $signed(op2))? 1:0 ; //bge
+            3'b110: je_o = (op1 < op2)? 1:0 ; //bltu
+            3'b111: je_o = (op1 >= op2)? 1:0 ; //bgeu
+            default : je_o = 0;
         endcase
     end else if (optype_i == 3)begin //Stype
         op_result = op2;
@@ -70,12 +70,12 @@ always @(*) begin
         op_result = pc_i + imm_i;
     end else if (optype_i == 6)begin //Jtype
         op_result = pc_i + 4 ;
-        jump_addr = jtypesel_i?  pc_i + imm_i : op1 + imm_i; //JAL : JALR
-        je = 1;
+        jump_addr_o = jtypesel_i?  pc_i + imm_i : op1 + imm_i; //JAL : JALR
+        je_o = 1;
     end else begin
         op_result = 0;
-        je = 0;
-        jump_addr = 0;
+        je_o = 0;
+        jump_addr_o = 0;
     end
 end
 
@@ -88,8 +88,6 @@ always@(posedge clk_i) begin
         mem_re_o <= 0 ;
         mem_we_o <= 0 ;
         opfunc3_o <= 0;
-        jump_addr_o <= 0;
-        je_o <= 0;
     end else begin
         rd_addr_o <= rd_addr_i;
         rd_data_o <= op_result;
@@ -98,8 +96,6 @@ always@(posedge clk_i) begin
         mem_re_o <= mem_re_i;
         mem_we_o <= mem_we_i ;
         opfunc3_o <= opfunc3_i;
-        jump_addr_o <= jump_addr;
-        je_o <= je;
     end
 end    
 

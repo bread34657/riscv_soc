@@ -9,7 +9,7 @@
 vluint64_t main_time = 0; 
 
 using namespace std;
-void sim_mem_load_bin(Vcoretop_rom* rom, string filename);
+void sim_mem_load_bin(Vcoretop_dpram* dpram, string filename);
 uint32_t sim_regs_read(Vcoretop_regfiles* regs,uint32_t addr);
 
 double sc_time_stamp()
@@ -45,7 +45,7 @@ int main(int argc,char **argv)
     top->trace(tfp, 0);
     tfp->open("wave.vcd"); 
 
-    sim_mem_load_bin(top->coretop->rom0, string(argv[1]));
+    sim_mem_load_bin(top->coretop->dpram0, string(argv[1]));
 
     top->rst_i = 1;
     for (int i = 0 ; i < 5 ; i ++)

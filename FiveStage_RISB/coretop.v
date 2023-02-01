@@ -104,7 +104,7 @@ program_counter program_counter0(
     .je_i(pipectrlpc_je)
 );
 
-rom rom0(
+dpram dpram0(
     .clk_i(clk_i),
     .addr_i(pc_wire),
     .inst_o(romif_inst),

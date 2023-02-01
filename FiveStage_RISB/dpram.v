@@ -1,6 +1,6 @@
 `include "defines.v"
 
-module rom (
+module dpram (
     //System Signals
     input wire clk_i,
 
