@@ -2,9 +2,13 @@
 
 module coretop (
     input wire rst_i,
-    input wire clk_i
+    input wire clk_i,
 
+    output reg halt_o //use for isa test
 );
+wire mem_halt ;
+assign halt_o = mem_halt;
+
 //pipeline ctrl
 wire [`XLEN-1:0] pipectrlpc_jumpaddr;
 wire pipectrlpc_je;
@@ -231,7 +235,9 @@ mem mem0(
     //to wb & forwardind
     .rd_addr_o(memwb_rdaddr),
     .rd_data_o(memwb_rddata),
-    .rd_we_o(memwb_we)
+    .rd_we_o(memwb_we),
+    //isa test
+    .halt_o(mem_halt)
 );
 writeback writeback0(
     .clk_i(clk_i),

@@ -72,8 +72,8 @@ wire JALtype = (opcode == 7'b1101111);
 wire JALRtype = (opcode == 7'b1100111);
 wire Btype = (opcode == 7'b1100011);
 
-wire shiftsel = (opcode == 7'b0100000)? 1 : 0 ; //(sra:srl)
-wire addsubsel = (opcode == 7'b0110011) & (opfunc7 == 7'b0100000) & (opfunc3 == 3'b000);
+wire shiftsel = (opfunc7 == 7'b0100000)? 1 : 0 ; //(sra:srl)
+wire addsubsel = (opcode == 7'b0110011) && (opfunc7 == 7'b0100000) && (opfunc3 == 3'b000);
 wire jtypesel = JALtype?  1:0 ; //JAL : JALR
 //data hazard
 wire raddr1_thesame = (rs1_addr_o == rd_addr_o) && (Rtype || Stype || Btype || Itype);

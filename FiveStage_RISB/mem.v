@@ -20,9 +20,18 @@ module mem(
     //to wb & forwarding
     output reg [4:0]rd_addr_o,
     output reg [`XLEN-1:0] rd_data_o,
-    output reg rd_we_o
-
+    output reg rd_we_o,
+    //isa test 
+    output reg halt_o
 );
+
+always @(posedge clk_i) begin
+    //for isa test
+    if (mem_we_i && opfunc3_i == 3'b010 && mem_addr_i == `HALT_ADDR)
+        halt_o <= 1'b1;
+    else
+        halt_o <= halt_o;
+end
 
 wire[1:0] ram_addr_offset;
 assign ram_addr_offset = mem_addr_i[1:0] & 2'b11; //0,1,2,3
