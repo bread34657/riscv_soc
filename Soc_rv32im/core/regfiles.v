@@ -29,7 +29,7 @@ always @(posedge clk_i)begin
         for (i=0;i<`REG_NUM;i=i+1)
         x[i] <= 0;
     end else begin
-        if(we)begin
+        if(we) begin
             x[rd_addr_i] <= rd_data_i;
         end
     end

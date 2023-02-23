@@ -6,13 +6,16 @@ module mem(
     //from pipectrl
     input wire stall_i,
     //from exe 
-    input wire [4:0]rd_addr_i,
+    input wire [4:0] rd_addr_i,
     input wire [`XLEN-1:0] rd_data_i,
     input wire rd_we_i,
     input wire [`XLEN-1:0] mem_addr_i,
     input wire mem_re_i,
     input wire mem_we_i,
-    input wire [2:0]opfunc3_i,
+    input wire [2:0] opfunc3_i,
+    input wire [11:0] csr_addr_i,
+    input wire [`XLEN-1:0] csr_data_i,
+    input wire csr_we_i, 
     //from ram
     input wire [`XLEN-1:0] ram_data_i,
     //to ram 
@@ -23,18 +26,11 @@ module mem(
     //to wb & forwarding
     output reg [4:0]rd_addr_o,
     output reg [`XLEN-1:0] rd_data_o,
-    output reg rd_we_o
-    //isa test 
-    //output reg halt_o
+    output reg rd_we_o,
+    output reg [11:0] csr_addr_o,
+    output reg [`XLEN-1:0] csr_data_o,
+    output reg csr_we_o
 );
-
-// always @(posedge clk_i) begin
-//     //for isa test
-//     if (mem_we_i && opfunc3_i == 3'b010 && mem_addr_i == `HALT_ADDR)
-//         halt_o <= 1'b1;
-//     else
-//         halt_o <= halt_o;
-// end
 
 wire[1:0] ram_addr_offset;
 assign ram_addr_offset = mem_addr_i[1:0] & 2'b11; //0,1,2,3
@@ -121,14 +117,23 @@ always @(posedge clk_i) begin
         rd_addr_o <= 0;
         rd_data_o <= 0;
         rd_we_o <= 0;
+        csr_addr_o <= 0;
+        csr_data_o <= 0;
+        csr_we_o <= 0;
     end else if (stall_i) begin
         rd_addr_o <= rd_addr_o;
         rd_data_o <= rd_data_o;
         rd_we_o <= rd_we_o ;
+        csr_addr_o <= csr_addr_o;
+        csr_data_o <= csr_data_o;
+        csr_we_o <= csr_we_o;
     end else begin
         rd_addr_o <= rd_addr_i;
         rd_data_o <= rd_data;
         rd_we_o <= rd_we_i ;
+        csr_addr_o <= csr_addr_i;
+        csr_data_o <= csr_data_i;
+        csr_we_o <= csr_we_i;
     end 
 end
 endmodule

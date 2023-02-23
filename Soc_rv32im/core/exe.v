@@ -17,9 +17,12 @@ module exe (
     input wire typesel_i,
     input wire mem_re_i,
     input wire mem_we_i,
+    input wire [11:0] csr_addr_i,
+    input wire csr_we_i,
     //from forwarding
     input wire [`XLEN-1:0] rs1_i,
     input wire [`XLEN-1:0] rs2_i,
+    input wire [`XLEN-1:0] csr_data_i,
     //to memory & forwarding
     output reg [4:0] rd_addr_o,
     output reg [`XLEN-1:0] rd_data_o,
@@ -28,6 +31,9 @@ module exe (
     output reg mem_re_o,
     output reg mem_we_o,
     output reg [2:0] opfunc3_o,
+    output reg [`XLEN-1:0] csr_data_o,
+    output reg [11:0] csr_addr_o,
+    output reg csr_we_o,
     //to pipectrl
     output reg [`XLEN-1:0] jump_addr_o,
     output reg je_o,
@@ -36,8 +42,8 @@ module exe (
 wire [`XLEN-1:0] op1,op2;
 assign op1 = (optype_i == 4)? (typesel_i)? 0:pc_i : rs1_i;
 assign op2 = (optype_i == 1 || optype_i == 4)? imm_i:rs2_i;
-reg [`XLEN-1:0] op_result,mtypea,mtypeb;
-
+reg [`XLEN-1:0] op_result,mtypea,mtypeb,csr_data;
+reg csr_we;
 wire [`XLEN-1:0] mem_addr;
 assign mem_addr = rs1_i + imm_i;
 
@@ -57,7 +63,8 @@ always @(*) begin
     je_o = 0;
     jump_addr_o = 0;
     mtype_stall_o = 0;
-
+    csr_data = 0;
+    csr_we = 0;
     if (optype_i == 0 || optype_i == 1 || optype_i == 4) begin //Rtype,Itype,Utype
         case(opfunc3_i)
             3'b000: op_result = (addsubsel_i)? op1 + (~op2 +1'b1) : op1 + op2 ; //sub:add
@@ -131,6 +138,44 @@ always @(*) begin
         op_result = pc_i + 4 ;
         jump_addr_o = typesel_i?  pc_i + imm_i : op1 + imm_i; //JAL : JALR
         je_o = 1;
+    end else if (csr_we_i)begin //CSRtype
+        case(opfunc3_i)
+            3'b001:begin //CSRRW
+                op_result = csr_data_i;
+                csr_data = op1; 
+                csr_we = 1;
+            end
+            3'b010:begin //CSRRS
+                op_result = csr_data_i;
+                csr_data = csr_data_i | op1 ;
+                csr_we = (op1 == 0)? 0:1;
+            end
+            3'b011:begin //CSRRC
+                op_result = csr_data_i;
+                csr_data = csr_data_i & ~op1;
+                csr_we = (op1 == 0)? 0:1;
+            end
+            3'b101:begin //CSRRWI
+                op_result = csr_data_i;
+                csr_data = imm_i; 
+                csr_we = 1;
+            end
+            3'b110:begin //CSRRSI
+                op_result = csr_data_i;
+                csr_data = csr_data_i | imm_i;
+                csr_we = (imm_i == 0)? 0:1;
+            end
+            3'b111:begin //CSRRCI
+                op_result = csr_data_i;
+                csr_data = csr_data_i & ~imm_i;
+                csr_we = (imm_i == 0)? 0:1;
+            end
+            default:begin
+                op_result = 0;
+                csr_data = 0;
+                csr_we = 0;
+            end
+        endcase
     end else begin
         op_result = 0;
         je_o = 0;
@@ -169,6 +214,9 @@ always@(posedge clk_i) begin
         mem_re_o <= 0 ;
         mem_we_o <= 0 ;
         opfunc3_o <= 0;
+        csr_addr_o <= 0;
+        csr_data_o <= 0;
+        csr_we_o <= 0;
     end else if (stall_i)begin
         rd_addr_o <= rd_addr_o;
         rd_data_o <= rd_data_o;
@@ -177,6 +225,9 @@ always@(posedge clk_i) begin
         mem_re_o <= mem_re_o;
         mem_we_o <= mem_we_o ;
         opfunc3_o <= opfunc3_o;
+        csr_addr_o <= csr_addr_o;
+        csr_data_o <= csr_data_o;
+        csr_we_o <= csr_we_o;
     end else begin
         rd_addr_o <= rd_addr_i;
         rd_data_o <= op_result;
@@ -185,6 +236,9 @@ always@(posedge clk_i) begin
         mem_re_o <= mem_re_i;
         mem_we_o <= mem_we_i ;
         opfunc3_o <= opfunc3_i;
+        csr_addr_o <= csr_addr_i;
+        csr_data_o <= csr_data;
+        csr_we_o <= csr_we;
     end
 end    
 

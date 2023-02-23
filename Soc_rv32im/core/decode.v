@@ -10,12 +10,16 @@ module decode (
     //from regfile
     input wire [`XLEN-1:0] reg_data1_i,
     input wire [`XLEN-1:0] reg_data2_i,
+    //from csr
+    input wire [`XLEN-1:0] csr_data_i,
     //from pipectrl
     input wire flush_i,
     input wire stall_i,
     //to regfile 
     output reg [4:0] rs1_addr_o,
     output reg [4:0] rs2_addr_o,
+    //to csr
+    output reg [11:0] csr_addr_o,
     //to exe
     output reg [`XLEN-1:0] pc_o,
     output reg [`XLEN-1:0] imm_o,
@@ -28,11 +32,14 @@ module decode (
     output reg typesel_o,
     output reg mem_re_o,
     output reg mem_we_o,
+    output reg csr_we_o,
     //to forwarding
     output reg [`XLEN-1:0] rs1_o,
     output reg [`XLEN-1:0] rs2_o,
     output reg [4:0] fwd_raddr1_o,
     output reg [4:0] fwd_raddr2_o,
+    output reg [11:0] fwd_csr_addr_o,
+    output reg [`XLEN-1:0] fwd_csr_data_o,
     //to pipe ctrl
     output reg loaduse_hazard_o
 );
@@ -43,6 +50,8 @@ wire [2:0] opfunc3 = (LUItype|AUPICtype)? 3'b000:rv32inst[14: 12];
 wire [6:0] opfunc7 = rv32inst[`XLEN-1 : 25];
 assign rs1_addr_o = rv32inst[19:15];
 assign rs2_addr_o = rv32inst[24:20];
+assign csr_addr_o = rv32inst[31:20];
+
 wire [4:0] rd_addr = rv32inst[11:7];
 reg [2:0] optype;
 
@@ -52,17 +61,18 @@ assign mem_re = Ltype ;
 assign mem_we = Stype ;
 //which type need write rd
 wire reg_we;
-assign reg_we = Itype | Rtype | Ltype | LUItype | AUPICtype | JALtype | JALRtype | Mtype;
-
+assign reg_we = Itype | Rtype | Ltype | LUItype | AUPICtype | JALtype | JALRtype | Mtype | CSRtype;
+wire csr_we;
+assign csr_we = CSRtype;
 //immediately type
-wire [`XLEN-1:0] immI,immL,immS,immU,immJ,immB;
+wire [`XLEN-1:0] immI,immL,immS,immU,immJ,immB,immCSR;
 assign immI = {{20{rv32inst[31]}}, rv32inst[31:20]};
 assign immL = {{20{rv32inst[31]}}, rv32inst[31:20]};
 assign immS = {{20{rv32inst[31]}}, rv32inst[31:25],rv32inst[11:7]};
 assign immU = {rv32inst[31:12], 12'b0};
 assign immJ = {{12{rv32inst[31]}}, rv32inst[19:12], rv32inst[20], rv32inst[30:21],1'b0};
 assign immB = {{20{inst_i[31]}}, inst_i[7], inst_i[30:25], inst_i[11:8], 1'b0};
-
+assign immCSR = {27'b0,rv32inst[19:15]};
 //optype
 wire Itype = (opcode == 7'b0010011);
 wire Rtype = (opcode == 7'b0110011) && (opfunc7 != 7'b0000001);
@@ -74,18 +84,19 @@ wire AUPICtype = (opcode == 7'b0010111);
 wire JALtype = (opcode == 7'b1101111);
 wire JALRtype = (opcode == 7'b1100111);
 wire Btype = (opcode == 7'b1100011);
+wire CSRtype = (opcode == 7'b1110011);
 
 wire shiftsel = (opfunc7 == 7'b0100000)? 1 : 0 ; //sra:srl
 wire addsubsel = (opcode == 7'b0110011) && (opfunc7 == 7'b0100000) && (opfunc3 == 3'b000); //add:sub
 wire typesel = JALtype || LUItype?  1:0 ; //jal,lui : jalr,aupic
 
 //data hazard
-wire raddr1_thesame = (rs1_addr_o == rd_addr_o) && (Rtype || Stype || Btype || Itype || Ltype || JALRtype);
+wire raddr1_thesame = (rs1_addr_o == rd_addr_o) && (Rtype || Stype || Btype || Itype || Ltype || JALRtype || CSRtype);
 wire raddr2_thesame = (rs2_addr_o == rd_addr_o) && (Rtype || Stype || Btype );
 assign loaduse_hazard_o = (raddr1_thesame | raddr2_thesame ) && mem_re_o;
 /*
 -----------------
-finish Rtype,Itype,Stype,Utype,Ltype,LUItype,AUPICtype,JALtype,JALRtype,Btype
+finish Rtype,Itype,Stype,Utype,Ltype,LUItype,AUPICtype,JALtype,JALRtype,Btype,CSRtype
 */
 
 wire [`XLEN-1:0] imm;
@@ -97,6 +108,7 @@ assign imm = ({32{Itype}} & immI)
     |({32{JALtype}} & immJ)
     |({32{JALRtype}} & immI)
     |({32{Btype}} & immB)
+    |({32{CSRtype}} & immCSR)
         ;
 
 always @(*) begin
@@ -135,6 +147,9 @@ always @(posedge clk_i) begin
         typesel_o <=0;
         mem_re_o <= 0;
         mem_we_o <= 0;
+        fwd_csr_addr_o <= 0;
+        fwd_csr_data_o <= 0;
+        csr_we_o <= 0;
     end else if(stall_i)begin
         pc_o <= pc_o;
         fwd_raddr1_o <= fwd_raddr1_o;
@@ -151,6 +166,9 @@ always @(posedge clk_i) begin
         typesel_o <= typesel_o;
         mem_re_o <= mem_re_o;
         mem_we_o <= mem_we_o;    
+        fwd_csr_addr_o <= fwd_csr_addr_o;
+        fwd_csr_data_o <= fwd_csr_data_o;
+        csr_we_o <= csr_we_o;
     end else begin
         pc_o <= pc_i;
         fwd_raddr1_o <= rs1_addr_o;
@@ -167,6 +185,9 @@ always @(posedge clk_i) begin
         typesel_o <= typesel;
         mem_re_o <= mem_re;
         mem_we_o <= mem_we;
+        fwd_csr_addr_o <= csr_addr_o;
+        fwd_csr_data_o <= csr_data_i;
+        csr_we_o <= csr_we; 
     end
 end
 

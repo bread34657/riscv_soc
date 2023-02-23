@@ -7,8 +7,8 @@ OBJDUMP = ${CROSS_COMPILE}objdump
 
 .DEFAULT_GOAL := all
 all:
-	@${CC} ${CFLAGS} test.S -Ttext=0x00000000 -o test.elf
-	@${OBJCOPY} -O binary test.elf test.bin
+	${CC} ${CFLAGS} test.S -Ttext=0x00000000 -o test.elf
+	${OBJCOPY} -O binary test.elf test.bin
 
 .PHONY : code
 code: all

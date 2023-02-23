@@ -16,8 +16,6 @@ module coretop (
 
 );
 
-//wire mem_halt ;
-//assign halt_o = mem_halt;
 //to dpram
 assign rom_addr_o = pc_wire;
 assign ram_addr_o  = memrom_ramaddr;
@@ -57,6 +55,10 @@ wire[`XLEN-1:0] regid_data2;
 //id_reg
 wire[4:0] idreg_addr1;
 wire[4:0] idreg_addr2;
+//id_csr
+wire [11:0] idcsr_addr;
+//csr_id 
+wire [`XLEN-1:0] csrid_data;
 //id_exe
 wire[`XLEN-1:0] idexe_pc;
 wire[`XLEN-1:0] idexe_imm;
@@ -69,24 +71,31 @@ wire idexe_addsubsel;
 wire idexe_typesel;
 wire idexe_memwe;
 wire idexe_memre;
+wire idexe_csrwe;
 //id_forward
 wire[`XLEN-1:0] idfwd_rs1;
 wire[`XLEN-1:0] idfwd_rs2;
 wire [4:0] idfwd_addr1;
 wire [4:0] idfwd_addr2;
+wire [11:0] idfwd_csraddr; //also to exe
+wire [`XLEN-1:0] idfwd_csrdata;
 //id_pipectrl
 wire idpipectrl_loadusehazard;
 //forward_exe
-wire[`XLEN-1:0] fwdexe_rs1;
-wire[`XLEN-1:0] fwdexe_rs2;
+wire [`XLEN-1:0] fwdexe_rs1;
+wire [`XLEN-1:0] fwdexe_rs2;
+wire [`XLEN-1:0] fwdexe_csrdata;
 //exe_mem
-wire[4:0] exemem_rdaddr;
-wire[`XLEN-1:0]exemem_rddata;
+wire [4:0] exemem_rdaddr;
+wire [`XLEN-1:0]exemem_rddata;
 wire exemem_we;
 wire [`XLEN-1:0] exemem_memaddr;
 wire exemem_memre;
 wire exemem_memwe;
 wire [2:0]exemem_opfunc3;
+wire [11:0] exemem_csraddr;
+wire [`XLEN-1:0] exemem_csrdata;
+wire exemem_csrwe;
 //exe_pipectrl
 wire [`XLEN-1:0] exepipe_jumpaddr;
 wire exepipe_je;
@@ -95,15 +104,22 @@ wire exepipe_stall;
 wire[4:0] memwb_rdaddr;
 wire[`XLEN-1:0] memwb_rddata;
 wire memwb_we;
+wire [11:0] memwb_csraddr;
+wire [`XLEN-1:0] memwb_csrdata;
+wire memwb_csrwe;
 //mem_rom
 wire [`XLEN-1:0] memrom_ramaddr;
 wire [`XLEN-1:0] memrom_ramdata;
 wire memrom_memwe;
 wire memrom_memre;
 //wb_reg
-wire[4:0] wbreg_rdaddr;
-wire[`XLEN-1:0]wbreg_rddata;
+wire [4:0] wbreg_rdaddr;
+wire [`XLEN-1:0] wbreg_rddata;
 wire wbreg_we;
+//wb_csr
+wire [11:0] wbcsr_csraddr;
+wire [`XLEN-1:0] wbcsr_csrdata;
+wire wbcsr_csrwe;
 
 pipectrl pipectrl0 (
     //from id
@@ -153,7 +169,6 @@ inst_fetch inst_fetch0(
     //to id
     .inst_o(ifid_inst),
     .pc_o(ifid_pc)
-
 );
 
 regfiles regfiles0(
@@ -171,6 +186,19 @@ regfiles regfiles0(
     .rs2_data_o(regid_data2)
 );
 
+csrfile csrflie0 (
+    .clk_i(clk_i),
+    .rst_i(rst_i),
+    //from id 
+    .csr_raddr_i(idcsr_addr),
+    //from wb
+    .csr_waddr_i(wbcsr_csraddr),
+    .csr_wdata_i(wbcsr_csrdata),
+    .csr_we_i(wbcsr_csrwe),
+    //to id
+    .csr_rdata_o(csrid_data)
+);
+
 decode decode0(
     .clk_i(clk_i),
     .rst_i(rst_i),
@@ -180,9 +208,11 @@ decode decode0(
     //from id
     .inst_i(ifid_inst),
     .pc_i(ifid_pc),
-    //from regto pipectrl
+    //from reg 
     .reg_data1_i(regid_data1),
     .reg_data2_i(regid_data2),
+    //from csr
+    .csr_data_i(csrid_data),
     //to reg
     .rs1_addr_o(idreg_addr1),
     .rs2_addr_o(idreg_addr2),
@@ -198,11 +228,16 @@ decode decode0(
     .typesel_o(idexe_typesel),
     .mem_re_o(idexe_memre),
     .mem_we_o(idexe_memwe),
+    .csr_we_o(idexe_csrwe),
+    //to csr
+    .csr_addr_o(idcsr_addr),
     //to forwarding
     .rs1_o(idfwd_rs1),
     .rs2_o(idfwd_rs2),
     .fwd_raddr1_o(idfwd_addr1),
     .fwd_raddr2_o(idfwd_addr2),
+    .fwd_csr_addr_o(idfwd_csraddr),
+    .fwd_csr_data_o(idfwd_csrdata),
     //to pipectrl
     .loaduse_hazard_o(idpipectrl_loadusehazard)
 );
@@ -228,7 +263,9 @@ exe exe0(
     .typesel_i(idexe_typesel),
     .mem_re_i(idexe_memre),
     .mem_we_i(idexe_memwe),
-    //to mem
+    .csr_addr_i(idfwd_csraddr),
+    .csr_we_i(idexe_csrwe),
+    //to mem & forwarding
     .rd_addr_o(exemem_rdaddr),
     .rd_data_o(exemem_rddata),
     .rd_we_o(exemem_we),
@@ -236,9 +273,13 @@ exe exe0(
     .mem_re_o(exemem_memre),
     .mem_we_o(exemem_memwe),
     .opfunc3_o(exemem_opfunc3),
+    .csr_addr_o(exemem_csraddr),
+    .csr_data_o(exemem_csrdata),
+    .csr_we_o(exemem_csrwe),
     //from forwarding
     .rs1_i(fwdexe_rs1),
-    .rs2_i(fwdexe_rs2)
+    .rs2_i(fwdexe_rs2),
+    .csr_data_i(fwdexe_csrdata)
 );
 
 mem mem0(
@@ -254,6 +295,9 @@ mem mem0(
     .mem_re_i(exemem_memre),
     .mem_we_i(exemem_memwe),
     .opfunc3_i(exemem_opfunc3),
+    .csr_addr_i(exemem_csraddr),
+    .csr_data_i(exemem_csrdata),
+    .csr_we_i(exemem_csrwe),
     //from rom 
     .ram_data_i(rommem_ramdata),
     //to rom
@@ -264,9 +308,10 @@ mem mem0(
     //to wb & forwardind
     .rd_addr_o(memwb_rdaddr),
     .rd_data_o(memwb_rddata),
-    .rd_we_o(memwb_we)
-    //isa test
-    //.halt_o(mem_halt)
+    .rd_we_o(memwb_we),
+    .csr_addr_o(memwb_csraddr),
+    .csr_data_o(memwb_csrdata),
+    .csr_we_o(memwb_csrwe)
 );
 
 writeback writeback0(
@@ -278,10 +323,17 @@ writeback writeback0(
     .rd_addr_i(memwb_rdaddr),
     .rd_data_i(memwb_rddata),
     .rd_we_i(memwb_we),
+    .csr_addr_i(memwb_csraddr),
+    .csr_data_i(memwb_csrdata),
+    .csr_we_i(memwb_csrwe),
     //to reg & forwarding
     .rd_addr_o(wbreg_rdaddr),
     .rd_data_o(wbreg_rddata),
-    .rd_we_o(wbreg_we)
+    .rd_we_o(wbreg_we),
+    //to csr & forwarding
+    .csr_addr_o(wbcsr_csraddr),
+    .csr_data_o(wbcsr_csrdata),
+    .csr_we_o(wbcsr_csrwe)
 );
 
 forwarding forwarding0(
@@ -290,21 +342,33 @@ forwarding forwarding0(
     .rs2_addr_i(idfwd_addr2),
     .rs1_data_i(idfwd_rs1),
     .rs2_data_i(idfwd_rs2),
+    .csr_addr_i(idfwd_csraddr),
+    .csr_data_i(idfwd_csrdata),
     //from exe 
     .exe_rdaddr_i(exemem_rdaddr),
     .exe_rddata_i(exemem_rddata),
     .exe_rdwe(exemem_we),
+    .exe_csraddr_i(exemem_csraddr),
+    .exe_csrdata_i(exemem_csrdata),
+    .exe_csrwe_i(exemem_csrwe),
     //from mem
     .mem_rdaddr_i(memwb_rdaddr),
     .mem_rddata_i(memwb_rddata),
     .mem_rdwe(memwb_we),
+    .mem_csraddr_i(memwb_csraddr),
+    .mem_csrdata_i(memwb_csrdata),
+    .mem_csrwe_i(memwb_csrwe),
     //from wb
     .wb_rdaddr_i(wbreg_rdaddr),
     .wb_rddata_i(wbreg_rddata),
     .wb_rdwe(wbreg_we),
+    .wb_csraddr_i(wbcsr_csraddr),
+    .wb_csrdata_i(wbcsr_csrdata),
+    .wb_csrwe_i(wbcsr_csrwe),
     //to exe
     .rs1_data_o(fwdexe_rs1),
-    .rs2_data_o(fwdexe_rs2)
+    .rs2_data_o(fwdexe_rs2),
+    .csr_data_o(fwdexe_csrdata)
 );
 
 endmodule
