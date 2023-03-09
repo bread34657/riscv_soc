@@ -1,0 +1,60 @@
+Hello, RVOS!
+HEAP_START = 00006104, HEAP_SIZE = 001f9efc, num of pages = 497
+TEXT:   0x00000000 -> 0x00001d04
+RODATA: 0x00001d04 -> 0x00002088
+DATA:   0x00003000 -> 0x00003004
+BSS:    0x00003004 -> 0x00006104
+HEAP:   0x0000f000 -> 0x00200000
+Task 0: Created!
+hart id is 0
+Sync exceptions!, code = 11
+System call from M-mode!
+--> sys_gethid, arg0 = 0x000037e3
+harID=0
+system call returned!, hart id is 0
+timer interruption!
+tick: 1 , Task 0
+Task 1: Created!
+timer interruption!
+tick: 2 , Task 1
+Sync exceptions!, code = 11
+System call from M-mode!
+--> sys_gethid, arg0 = 0x000037e3
+harID=0
+system call returned!, hart id is 0
+timer interruption!
+tick: 3 , Task 0
+timer interruption!
+tick: 4 , Task 1
+Sync exceptions!, code = 11
+System call from M-mode!
+--> sys_gethid, arg0 = 0x000037e3
+harID=0
+system call returned!, hart id is 0
+timer interruption!
+tick: 5 , Task 0
+timer interruption!
+tick: 6 , Task 0
+Sync exceptions!, code = 11
+System call from M-mode!
+--> sys_gethid, arg0 = 0x000037e3
+harID=0
+system call returned!, hart id is 0
+timer interruption!
+tick: 7 , Task 0
+timer interruption!
+tick: 8 , Task 1
+Sync exceptions!, code = 11
+System call from M-mode!
+--> sys_gethid, arg0 = 0x000037e3
+harID=0
+system call returned!, hart id is 0
+timer interruption!
+tick: 9 , Task 0
+timer interruption!
+tick: 10 , Task 0
+Sync exceptions!, code = 11
+System call from M-mode!
+--> sys_gethid, arg0 = 0x000037e3
+harID=0
+system call returned!, hart id is 0
